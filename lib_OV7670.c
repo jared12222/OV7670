@@ -4,7 +4,6 @@
 #include <util/delay.h>
 #include <avr/pgmspace.h>
 
-#define F_CPU 16000000UL
 #define vga   0
 #define qvga  1
 #define qqvga   2
