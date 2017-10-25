@@ -3,6 +3,9 @@
 #include <util/twi.h>
 #include <util/delay.h>
 #include <avr/pgmspace.h>
+#include "lib_twi_m328p.c"
+#include "lib_pwm_m328p.c"
+
 
 #define vga   0
 #define qvga  1
@@ -214,7 +217,7 @@ static const struct regval_list yuv422_ov7670[] PROGMEM = {
 	{0x53, 0x5e},		/* "matrix coefficient 5" */
 	{0x54, 0x80},		/* "matrix coefficient 6" */
 	{REG_COM13,/*COM13_GAMMA|*/COM13_UVSAT},
-	{0xff, 0xff},		/* END MARKER */
+	{0xff, 0xff}		/* END MARKER */
 };
 static const struct regval_list rgb565_ov7670[] PROGMEM = {
 	{REG_COM7, COM7_RGB}, /* Selects RGB mode */
@@ -229,14 +232,14 @@ static const struct regval_list rgb565_ov7670[] PROGMEM = {
 	{0x53, 0xa7},		 /* "matrix coefficient 5" */
 	{0x54, 0xe4},		 /* "matrix coefficient 6" */
 	{REG_COM13, /*COM13_GAMMA|*/COM13_UVSAT},
-	{0xff, 0xff},	/* END MARKER */
+	{0xff, 0xff}	/* END MARKER */
 };
 static const struct regval_list bayerRGB_ov7670[] PROGMEM = {
 	{REG_COM7, COM7_BAYER},
 	{REG_COM13, 0x08}, /* No gamma, magic rsvd bit */
 	{REG_COM16, 0x3d}, /* Edge enhancement, denoise */
 	{REG_REG76, 0xe1}, /* Pix correction, magic rsvd */
-	{0xff, 0xff},	/* END MARKER */
+	{0xff, 0xff}	/* END MARKER */
 };
 static const struct regval_list ov7670_default_regs[] PROGMEM = {//from the linux driver
 	{REG_COM7, COM7_RESET},
@@ -344,47 +347,10 @@ static const struct regval_list ov7670_default_regs[] PROGMEM = {//from the linu
 	{0x79, 0x05},		{0xc8, 0x30},
 	{0x79, 0x26},
 
-	{0xff, 0xff},	/* END MARKER */
+	{0xff, 0xff}	/* END MARKER */
 };
 //----------------------------------------------
-void twi_ini (void) {
-	TWBR=72;
-	TWSR=0<<TWPS1 | 0<<TWPS0;
-}
-void pwm_ini (void) {
-	TCCR2A=1<<COM2A0 | 1<<WGM21 | 1<<WGM20;
-	TCCR2B=1<<WGM22  | 1<<CS20;
-	OCR2A=0;
-	DDRC &=~15;
-	DDRD &=~252;
-	_delay_ms(100);
-}
-void start (void) {
-	TWCR=1<<TWEN | 1<<TWSTA | 1<< TWINT;
-	while (!(TWCR&(1<<TWINT)));
-	if(TWSR&0xF8 != TW_START) {
-		printf("-----start\n");
-		while(1);
-	}
-}
-void write_addr (uint8_t addr,uint8_t ack) {
-	TWDR=addr;
-	TWCR=1<<TWINT | 1<<TWEN;
-	while(TWCR&(1<<TWINT) == 0);
-	if(TWSR&0xF8 != ack) {
-		printf("-----write\n");
-		while(1);
-	}
-}
-void write_data (uint8_t data,uint8_t ack) {
-	TWDR=data;
-	TWCR=1<<TWINT | 1<<TWEN;
-	while(!(TWCR&(1<<TWINT)));
-	if(TWSR&0xF8 != ack) {
-		printf("-----write data\n");
-		while(1);
-	}
-}
+
 void write_reg (uint8_t reg,uint8_t data) {
 	start();
 	write_addr(camAddr_WR,0x18);
@@ -392,23 +358,8 @@ void write_reg (uint8_t reg,uint8_t data) {
 	write_data(data,0x28);
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 }
-uint8_t read(uint8_t nack){
-  if (nack){
-    TWCR = (1<<TWINT) | (1<<TWEN);
-    while ((TWCR & 1<<TWINT)) == 0); /* wait for transmission */
-    if ((TWSR & 0xF8) != 0x58)
-      printf("-----read\n");
-    return TWDR;
-  }
-  else{
-    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWEA);
-    while ((TWCR & (1<<TWINT)) == 0); /* wait for transmission */
-    if ((TWSR & 0xF8) != 0x50)
-      printf("-----read\n");
-    return TWDR;
-  }
-}
-uint8_t read_reg (uint reg) {
+
+uint8_t read_reg (uint8_t reg) {
 	uint8_t data=0;
 	start();
 	write_addr(camAddr_WR,0x18);
@@ -422,10 +373,11 @@ uint8_t read_reg (uint reg) {
 	_delay_ms(10);
 	return data;
 }
+
 void wrSensorRegs8_8(const struct regval_list reglist[]){
   uint8_t reg_addr, reg_val;
   const struct regval_list *next = reglist;
-  while ((reg_addr != 0xff) | (reg_val != 0xff)){
+  while ((reg_addr != 0xff) | (reg_val != 0xff)) {
     reg_addr = pgm_read_byte(&next->reg_num);
     reg_val = pgm_read_byte(&next->value);
     wrReg(reg_addr, reg_val);
@@ -439,6 +391,7 @@ void setRes(void){
   wrReg(REG_COM3, 0); // REG_COM3 enable scaling
   wrSensorRegs8_8(vga_ov7670);
 }
+
 void camInit(void){
   wrReg(0x12, 0x80);
   _delay_ms(100);
