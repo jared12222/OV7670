@@ -351,7 +351,7 @@ static const struct regval_list ov7670_default_regs[] PROGMEM = {//from the linu
 };
 //----------------------------------------------
 
-void write_reg (uint8_t reg,uint8_t data) {
+void wrReg (uint8_t reg,uint8_t data) {
 	start();
 	write_addr(camAddr_WR,0x18);
 	write_data(reg,0x28);
@@ -402,8 +402,12 @@ void setup (void) {
 	twi_ini();
 	DDRB|=(1 << 3);
 	pwm_ini();
+    printf("camInit\n");
 	camInit();
+    printf("setRes\n");
 	setRes();
+    printf("setColor\n");
   	setColor();
-	write_reg(0x11,0x10);//clk prescaler
+    printf("set CLK prescaler\n");
+	wrReg(0x11,0x10);//clk prescaler
 }
