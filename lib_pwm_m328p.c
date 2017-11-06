@@ -6,5 +6,4 @@ void pwm_ini (void) {
 	OCR2A=0;
 	DDRC &=~15;
 	DDRD &=~252;
-	_delay_ms(100);
 }
