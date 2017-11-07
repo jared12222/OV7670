@@ -399,9 +399,11 @@ void camInit(void){
   wrReg(REG_COM10, 32);//PCLK does not toggle on HBLANK.
 }
 void setup (void) {
+    printf("pwm ini\n");
+    pwm_ini();
+    printf("twi ini\n");
 	twi_ini();
 	DDRB|=(1 << 3);
-	pwm_ini();
     printf("camInit\n");
 	camInit();
     printf("setRes\n");
