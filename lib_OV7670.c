@@ -351,12 +351,21 @@ static const struct regval_list ov7670_default_regs[] PROGMEM = {//from the linu
 };
 //----------------------------------------------
 
-void wrReg (uint8_t reg,uint8_t data) {
+uint8_t wrReg (uint8_t reg,uint8_t data)
+{
+    uint8_t chk = 0;
 	start();
-	write_addr(camAddr_WR,0x18);
-	write_data(reg,0x28);
-	write_data(data,0x28);
+	chk = write_addr(camAddr_WR,0x18);
+    if(chk)
+        printf("ERR camID %.2X\n",chk);
+	chk = write_data(reg,0x28);
+    if(chk)
+        printf("ERR reg %.2X\n",chk);
+	chk = write_data(data,0x28);
+    if(chk)
+        printf("ERR data %.2X\n",chk);
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
+    return chk;
 }
 
 uint8_t read_reg (uint8_t reg) {
@@ -364,25 +373,27 @@ uint8_t read_reg (uint8_t reg) {
 	start();
 	write_addr(camAddr_WR,0x18);
 	write_data(reg,0x28);
-	TWCR=1<<TWINT | 1<<TWEN | 1<<TWSTO;
+	TWCR=(1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 	_delay_ms(10);
 	start();
 	write_addr(camAddr_RD,0x40);
 	data=read(1);
-	TWCR=1<<TWINT | 1<<TWEN | 1<<TWSTO;
+	TWCR=(1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 	_delay_ms(10);
 	return data;
 }
 
-void wrSensorRegs8_8(const struct regval_list reglist[]){
-  uint8_t reg_addr, reg_val;
-  const struct regval_list *next = reglist;
-  while ((reg_addr != 0xff) | (reg_val != 0xff)) {
-    reg_addr = pgm_read_byte(&next->reg_num);
-    reg_val = pgm_read_byte(&next->value);
-    wrReg(reg_addr, reg_val);
-    next++;
-  }
+uint8_t wrSensorRegs8_8(const struct regval_list reglist[]){
+    uint8_t chk;
+    uint8_t reg_addr, reg_val;
+    const struct regval_list *next = reglist;
+    while ((reg_addr != 0xff) | (reg_val != 0xff)) {
+        reg_addr = pgm_read_byte(&next->reg_num);
+        reg_val = pgm_read_byte(&next->value);
+        chk += wrReg(reg_addr, reg_val);
+        next++;
+    }
+    return chk;
 }
 void setColor(void){
   wrSensorRegs8_8(yuv422_ov7670);
@@ -392,20 +403,25 @@ void setRes(void){
   wrSensorRegs8_8(vga_ov7670);
 }
 
-void camInit(void){
-  wrReg(0x12, 0x80);
-  _delay_ms(100);
-  wrSensorRegs8_8(ov7670_default_regs);
-  wrReg(REG_COM10, 32);//PCLK does not toggle on HBLANK.
+uint8_t camInit(void){
+    uint8_t chk;
+    chk += wrReg(0x12, 0x80);
+    _delay_ms(100);
+    chk += wrSensorRegs8_8(ov7670_default_regs);
+    chk += wrReg(REG_COM10, 32);//PCLK does not toggle on HBLANK.
+    return chk;
 }
 void setup (void) {
+    uint8_t chk;
     printf("pwm ini\n");
     pwm_ini();
+	DDRD &=~252;
     printf("twi ini\n");
 	twi_ini();
 	DDRB|=(1 << 3);
     printf("camInit\n");
-	camInit();
+	chk = camInit();
+    printf("ERR %X",chk);
     printf("setRes\n");
 	setRes();
     printf("setColor\n");
