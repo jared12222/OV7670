@@ -6,6 +6,7 @@
 #include "lib_twi_m328p.c"
 #include "lib_pwm_m328p.c"
 
+#define delay_new_START 260
 
 #define vga   0
 #define qvga  1
@@ -374,12 +375,12 @@ uint8_t read_reg (uint8_t reg) {
 	write_addr(camAddr_WR,0x18);
 	write_data(reg,0x28);
 	TWCR=(1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
-	_delay_ms(10);
+	_delay_us(delay_new_START);
 	start();
 	write_addr(camAddr_RD,0x40);
 	data=read(1);
 	TWCR=(1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
-	_delay_ms(10);
+	_delay_us(delay_new_START);
 	return data;
 }
 
@@ -391,6 +392,7 @@ uint8_t wrSensorRegs8_8(const struct regval_list reglist[]){
         reg_addr = pgm_read_byte(&next->reg_num);
         reg_val = pgm_read_byte(&next->value);
         chk += wrReg(reg_addr, reg_val);
+        _delay_us(delay_new_START);
         next++;
     }
     return chk;
@@ -399,16 +401,21 @@ void setColor(void){
   wrSensorRegs8_8(yuv422_ov7670);
 }
 void setRes(void){
-  wrReg(REG_COM3, 0); // REG_COM3 enable scaling
-  wrSensorRegs8_8(vga_ov7670);
+    printf("set REG_COM3\n");
+    wrReg(REG_COM3, 0); // REG_COM3 enable scaling
+    _delay_us(delay_new_START);
+    printf("set vga\n");
+    wrSensorRegs8_8(vga_ov7670);
 }
 
 uint8_t camInit(void){
     uint8_t chk;
     chk += wrReg(0x12, 0x80);
-    _delay_ms(100);
+    _delay_us(delay_new_START);
+
     chk += wrSensorRegs8_8(ov7670_default_regs);
     chk += wrReg(REG_COM10, 32);//PCLK does not toggle on HBLANK.
+    _delay_us(delay_new_START);
     return chk;
 }
 void setup (void) {
@@ -418,14 +425,12 @@ void setup (void) {
 	DDRD &=~252;
     printf("twi ini\n");
 	twi_ini();
-	DDRB|=(1 << 3);
     printf("camInit\n");
 	chk = camInit();
-    printf("ERR %X",chk);
     printf("setRes\n");
 	setRes();
     printf("setColor\n");
   	setColor();
     printf("set CLK prescaler\n");
-	wrReg(0x11,0x10);//clk prescaler
+	wrReg(0x11,0x00);//clk prescaler
 }
