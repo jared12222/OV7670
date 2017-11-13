@@ -7,7 +7,8 @@
 #define TWI_STATUS (TWSR & 0xF8)
 
 void twi_ini (void) {
-	TWBR=198;
+    // set SCL at 400KHz
+	TWBR=6;
 	TWSR=_BV(TWPS0);
 }
 
@@ -42,24 +43,14 @@ uint8_t read(uint8_t nACK){
     uint8_t count=0;
     if (nACK){
         TWCR = (1<<TWINT) | (1<<TWEN);
-        while (!(TWCR&(1<<TWINT)))
-        {
-            count ++;
-            if(count > timeout_count)
-                return TWI_timeout;
-        }
+        while (!(TWCR&(1<<TWINT)));
         if (TWI_STATUS != 0x58)
           printf("-----read\n");
         return TWDR;
     }
     else{
         TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWEA);
-        while (!(TWCR&(1<<TWINT)))
-        {
-            count ++;
-            if(count > timeout_count)
-                return TWI_timeout;
-        }
+        while (!(TWCR&(1<<TWINT)));
         if (TWI_STATUS != 0x50)
           printf("-----read\n");
         return TWDR;
