@@ -6,9 +6,6 @@
 #include "lib_twi_m328p.c"
 #include "lib_pwm_m328p.c"
 
-
-#define raw_byte (PINC<<4)|(PIND>>4);
-
 #define delay_new_START 260
 
 #define vga   0
@@ -423,8 +420,8 @@ void camInit(void){
     //return chk;
 }
 void int0_set (void) {
-    EICRA = 0x03;
-    EIMSK = 0x01;
+    EICRA = 0x03;   // set INT0 rise
+    EIMSK = 0x01;   // enable INT0 vector
 }
 
 void dio_set (void) {
@@ -450,5 +447,5 @@ void setup (void) {
     printf("setColor\n");
   	setColor();
     printf("set CLK prescaler\n");
-	wrReg(REG_CLKRC,0x01);//clk prescaler
+	wrReg(REG_CLKRC,31);//clk prescaler
 }
