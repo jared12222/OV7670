@@ -2,7 +2,8 @@
 #include "rev_STDIO.h"
 #include <stdio.h>
 #include <avr\io.h>
-#define USART_baud 38400
+//*****  set at 1Mbs*******//
+//#define USART_baud 38400
 //Internal Function Prototypes
 
 int rev_stdio_putchar(char c, FILE *stream);
@@ -43,7 +44,8 @@ char rev_STDIO_set(void)
 {
 	unsigned int baud;
 
-	baud = F_CPU/16/USART_baud-1;
+	//baud = F_CPU/16/USART_baud-1;
+    baud   = 0; //set baud 1Mbs
 	UBRR0H = (unsigned char)(baud>>8);
 	UBRR0L = (unsigned char)baud;
 
