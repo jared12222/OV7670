@@ -1,10 +1,13 @@
-#include <stdint.h>
+#include <stdio.h>
 #include <avr/io.h>
 #include <util/twi.h>
 #include <util/delay.h>
 #include <avr/pgmspace.h>
 #include "lib_twi_m328p.c"
 #include "lib_pwm_m328p.c"
+
+
+#define raw_byte (PINC<<4)|(PIND>>4);
 
 #define delay_new_START 260
 
@@ -182,7 +185,7 @@ static const struct regval_list vga_ov7670[] PROGMEM = {
 	{0xff, 0xff},		/* END MARKER */
 };
 static const struct regval_list qvga_ov7670[] PROGMEM = {
-	{REG_COM14, 0x19},
+	{REG_COM14, 0x18},
 	{0x72, 0x11},
 	{0x73, 0xf1},
 	{REG_HSTART,0x16},
@@ -357,14 +360,16 @@ uint8_t wrReg (uint8_t reg,uint8_t data)
     uint8_t chk = 0;
 	start();
 	chk = write_addr(camAddr_WR,0x18);
-    if(chk)
-        printf("ERR camID %.2X\n",chk);
+//    if(chk)
+//        printf("ERR camID %.2X\n",chk);
+    //printf("wrData\n");
 	chk = write_data(reg,0x28);
-    if(chk)
-        printf("ERR reg %.2X\n",chk);
+//    if(chk)
+//        printf("ERR reg %.2X\n",chk);
+    //printf("wrData1\n");
 	chk = write_data(data,0x28);
-    if(chk)
-        printf("ERR data %.2X\n",chk);
+//    if(chk)
+//        printf("ERR data %.2X\n",chk);
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
     return chk;
 }
@@ -401,36 +406,49 @@ void setColor(void){
   wrSensorRegs8_8(yuv422_ov7670);
 }
 void setRes(void){
-    printf("set REG_COM3\n");
+//    printf("set REG_COM3\n");
     wrReg(REG_COM3, 0); // REG_COM3 enable scaling
     _delay_us(delay_new_START);
-    printf("set vga\n");
+//    printf("set qvga\n");
     wrSensorRegs8_8(vga_ov7670);
 }
 
-uint8_t camInit(void){
-    uint8_t chk;
-    chk += wrReg(0x12, 0x80);
+void camInit(void){
+    //uint8_t chk;
+    wrReg(0x12, 0x80);
     _delay_us(delay_new_START);
+    wrSensorRegs8_8(ov7670_default_regs);
+    wrReg(REG_COM10, 32);//PCLK does not toggle on HBLANK.
+    _delay_us(delay_new_START);
+    //return chk;
+}
+void int0_set (void) {
+    EICRA = 0x03;
+    EIMSK = 0x01;
+}
 
-    chk += wrSensorRegs8_8(ov7670_default_regs);
-    chk += wrReg(REG_COM10, 32);//PCLK does not toggle on HBLANK.
-    _delay_us(delay_new_START);
-    return chk;
+void dio_set (void) {
+
+    DDRD &= ~((1<< PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5)|(1<<PD6)|(1<<PD7)|(1 << PD0));  //serial
+    DDRD |= (1 << PD1);
+    DDRC &= ~((1<< PC3)|(1<<PC2)|(1<<PC1)|(1<<PC0));
+    DDRB &= ~(1<<PB0);
+
 }
 void setup (void) {
     uint8_t chk;
-    printf("pwm ini\n");
     pwm_ini();
-	DDRD &=~252;
+    printf("dio / int0\n");
+    int0_set();
+    dio_set();
     printf("twi ini\n");
 	twi_ini();
     printf("camInit\n");
-	chk = camInit();
+	camInit();
     printf("setRes\n");
 	setRes();
     printf("setColor\n");
   	setColor();
     printf("set CLK prescaler\n");
-	wrReg(0x11,0x00);//clk prescaler
+	wrReg(REG_CLKRC,0x01);//clk prescaler
 }
